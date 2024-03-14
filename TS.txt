@@ -1,0 +1,58 @@
+Техническое задание: Игра Морской Бой:
+1. Подключить управление мышью
+  а) Необходимо обеспечить возможность управления игрой с помощью мыши, включая клики и перемещения. ✔ 
+2. Сделать главное меню с кнопками "New Game" и "Exit" (должны быть кликабельны):
+  а) Кнопка "New Game" переводит на экран генерации судов; ✔
+  б) Кнопка "Exit" выход из программы; ✔
+3. Сделать экран генерации судов c отображением карты и двух кнопок "GENERATE" и "OK":
+  a) Отображени карты с координатами, одна из них заполена судами игрока, вторая карта компьютера расположение судов закрыто ✔
+  б) Кнопка "GENERATE" генерирует новое случайное поле судов (Алгоритм генерации полей судов должен быть эффективным и гарантировать, что суда не пересекаются) ✔
+  в) Кнопка "OK" подтверждение выбраного поля ✔
+4. Сделать экран игры с кнопкой "GIVE UP!" и отображением игрового поля (поле компьютера должна быть кликабельным)
+  а) При промахе по игровой клетке отображается '*', при попадании 'X' ✔
+  б) При уничтожении судна клетки рядом заполняются '*' ✔
+  в) Кнопка "GIVE UP!" заканчивает игру в пользу компьютера ✔
+5. Игровая логика:
+  а) Реализация правил для определения победы и поражения. ✔
+  б) Учет количества потопленных судов и завершение игры при потере всех судов игроком или компьютером. ✔
+6. Звуковые эффекты:
+  а) Добавление звуковых эффектов для уведомления о попаданиях, промахах и победе/поражении.
+7. Сетевая игра:
+  а) Реализовать возможность игры по сети с другими игроками.
+  б) Обеспечить синхронизацию игровых действий между игроками.
+11. Документация:
+  а) Подробное описание функциональности игры и инструкции по использованию.
+  б) Документация по коду, включая комментарии и описание алгоритмов.
+
+
+Technical Specification: Battleship Game
+
+1. Mouse Control Integration:
+  -Enable mouse control for the game, including clicks and movements.
+2. Main Menu:
+  -Create a main menu with two buttons: "New Game" and "Exit".
+    -"New Game" should lead to the ship generation screen.
+    -"Exit" should terminate the program.
+3. Ship Generation Screen:
+  -Display two maps: one for the player and one for the computer.
+  -The player's map should be visible, while the computer's ship positions should be hidden.
+  -Add "GENERATE" and "OK" buttons.
+    -"GENERATE" should randomly generate ship placements on the player's map.
+    -"OK" should confirm the player's ship placements.
+4. Game Screen:
+  -Create a game screen with the display of the playing field and a "GIVE UP!" button.
+  -The computer's field should be clickable for the player to make shots.
+  -Show '*' for misses and 'X' for hits.
+  -After sinking a ship, adjacent cells should be marked with '*'.
+  -The "GIVE UP!" button should end the game in favor of the computer.
+5. Game Logic:
+  -Implement rules for determining victory and defeat.
+  -Keep track of the number of ships sunk and end the game when all ships are lost for either player.
+6. Sound Effects:
+  -Add sound effects to notify players of hits, misses, and game conclusion.
+7. Networked Play:
+  -Implement the ability to play over a network with other players.
+  -Ensure synchronization of game actions between players.
+8. Documentation:
+  -Provide detailed functionality description and usage instructions.
+  -Include code documentation, including comments and algorithm descriptions.
