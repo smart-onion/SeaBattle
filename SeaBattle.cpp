@@ -1,9 +1,13 @@
+#include "Header.h"
 #include <iostream>
 #include <windows.h>
 #include <string>
 #include <cwchar>
 #include <ctime>
 #include <math.h>
+#include <limits>
+#pragma comment(lib, "ws2_32.lib")
+
 using namespace std;
 
 HANDLE h_out = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -24,6 +28,9 @@ enum LAYER
 	MENU,
 	GENERATE,
 	GAME,
+	NETWORK_CONNECT,
+	NETWORK_GAME,
+	NETWORK_GENERATE,
 	GAMEOVER,
 };
 
@@ -31,7 +38,6 @@ enum LAYER
 void ChangeColor(COLOR color);
 void GoToXY(int x, int y);
 void drawLine(int x, int y, int color, string message);
-void DrawChar(int x, int y, int color, char ch);
 void SetConsoleWindowColumnsAndRows(unsigned int columns, unsigned int rows);
 void SetConsoleFont(int font_width, int font_height);
 void CenterScreen(int font_width, int font_height, unsigned short console_window_width, unsigned short console_window_height);
@@ -46,13 +52,13 @@ void DrawTable(int startX, int startY, char** arr, bool player);
 int computerTurn(char** playerTable);
 bool isGameOver(char** arr, int SIZE);
 void DrawGameOver(bool isPlayerOver, bool isComputerOver, LAYER* layer, unsigned short console_window_width, unsigned short console_window_height);
+char** ReceiveData(char** arr, int SIZE, SOCKET socket, bool isServer);
 
 
 
 
 int main()
 {
-
 	const unsigned short console_window_width = 100; // width in characters
 	const unsigned short console_window_height = 30; // height in characters
 
@@ -77,23 +83,24 @@ int main()
 
 	unsigned int turn = rand() % 2;
 
+	bool isServer = false;
+	SOCKET server = 0;
+	string SERVER_IP;
 	while (isRunning)
 	{
 			switch (layer)
 			{
 			case LAYER::MENU:
-
+				isServer = false;
 				DrawMenu(&layer, console_window_width, console_window_height);
 				break;
 
 			case LAYER::GENERATE:
 				action = 1;
 
-
 				message = "GENERATE";
 				drawLine(messageColumn, messageLine, COLOR::BLUE, message);
 				drawLine(messageColumn + 10, messageLine, COLOR::GREEN, "OK");
-
 
 				do
 				{
@@ -114,11 +121,78 @@ int main()
 				drawLine(messageColumn + 10, messageLine, COLOR::GREEN, message);
 				layer = LAYER::GAME;
 				break;
+			case LAYER::NETWORK_CONNECT:
+				server = 0;
+				message = "CREATE SERVER";
+				messageColumn = console_window_width / 2 - 20;
+				messageLine = 5;
+				drawLine(messageColumn, messageLine, COLOR::BLUE, message);
+				drawLine(messageColumn + 20, messageLine, COLOR::GREEN, "CONNECT");
+
+				action = HandleMouseEvent(messageColumn, messageColumn + message.size(), &layer);
+
+				if (!server && action == 1)
+				{
+					isServer = true;
+					system("cls");
+					server = StartServer();
+					layer = LAYER::NETWORK_GENERATE;
+				}
+				else if (action == -1)
+				{
+					drawLine(10, 8, COLOR::GREEN, "ENTER IP: ");
+					cin >> SERVER_IP;
+					cout << SERVER_IP;
+					GoToXY(10, 9);
+					server = Client(SERVER_IP.c_str());
+					cout << server;
+					if (server != 1)
+					{
+						system("cls");
+						layer = LAYER::NETWORK_GENERATE;
+					}
+				}
+				break;
+			case LAYER::NETWORK_GENERATE:
+				action = 1;
+				messageColumn = 43;
+				messageLine = 24;
+				message = "GENERATE";
+				drawLine(messageColumn, messageLine, COLOR::BLUE, message);
+				drawLine(messageColumn + 10, messageLine, COLOR::GREEN, "OK");
+
+				do
+				{
+					if (action == 1)
+					{
+						playerTable = generateTable(tableSize);
+						DrawTable(20, 10, playerTable, true);
+					}
+
+					action = HandleMouseEvent(messageColumn, messageColumn + message.size(), &layer);
+
+				} while (action != -1);
+
+				if (isServer)
+				{
+					SendToClient(server, playerTable);
+				}
+				else
+				{
+					SendToServer(server, playerTable);
+				}
+				layer = LAYER::NETWORK_GAME;
+				break;
+			case LAYER::NETWORK_GAME:
+				ChangeColor(COLOR::BLACK);
+				computerTable = ReceiveData(computerTable, tableSize, server, isServer);
+				DrawTable(20, 10, playerTable, true);
+				DrawTable(55, 10, computerTable, false);
+
+				break;
 			case LAYER::GAME:
 
 				ChangeColor(COLOR::BLACK);
-				DrawTable(20, 10, playerTable, true);
-				DrawTable(55, 10, computerTable, false);
 
 				isPlayerOver = isGameOver(playerTable, tableSize);
 				isComputerOver = isGameOver(computerTable, tableSize);
@@ -132,8 +206,6 @@ int main()
 				{
 					layer = LAYER::GAMEOVER;
 				}
-
-
 
 				if (turn)
 				{
@@ -178,6 +250,9 @@ int main()
 	
 }
 
+
+
+
 void ChangeColor(COLOR color)
 {
 	SetConsoleTextAttribute(h_out, color);
@@ -199,16 +274,6 @@ void drawLine(int x, int y, int color, string message)
 	SetConsoleTextAttribute(h_out, color);
 	SetConsoleCursorPosition(h_out, cursor);
 	cout << message;
-}
-
-void DrawChar(int x, int y, int color, char ch)
-{
-	COORD cursor;
-	cursor.X = x;
-	cursor.Y = y;
-	SetConsoleTextAttribute(h_out, color);
-	SetConsoleCursorPosition(h_out, cursor);
-	cout << ch;
 }
 
 void SetConsoleWindowColumnsAndRows(unsigned int columns, unsigned int rows)
@@ -303,11 +368,37 @@ int HandleMouseEvent(int x1, int x2, LAYER* layer, int y1, int y2, char** arr)
 			{
 				*layer = LAYER::GENERATE;
 				system("cls");
+			}			
+			if (mouseCoords.X >= x1 && mouseCoords.X < x2 && mouseCoords.Y == 11 && LEFT_CLICK) // start new game if pressed NEW GAME in console
+			{
+				*layer = LAYER::NETWORK_CONNECT;
+				system("cls");
 			}
 
 			return 1;
 			break;
+		case LAYER::NETWORK_CONNECT:
+			
+			if (mouseCoords.X >= x1 && mouseCoords.X < x2 && mouseCoords.Y == 5 && LEFT_CLICK) // game over if pressed EXIT in console
+			{
+				return 1;
+			}
+			if (mouseCoords.X >= x1 + 20 && mouseCoords.X < x2 + 20 && mouseCoords.Y == 5 && LEFT_CLICK) // game over if pressed EXIT in console
+			{
+				return -1;
+			}
+			break;
 		case LAYER::GENERATE:
+			if (mouseCoords.X >= x1 && mouseCoords.X < x2 && mouseCoords.Y == 24 && LEFT_CLICK) // game over if pressed EXIT in console
+			{
+				return 1;
+			}
+			if (mouseCoords.X >= x1 + 10 && mouseCoords.X < x2 + 10 && mouseCoords.Y == 24 && LEFT_CLICK) // game over if pressed EXIT in console
+			{
+				return -1;
+			}
+			break;
+		case LAYER::NETWORK_GENERATE:
 			if (mouseCoords.X >= x1 && mouseCoords.X < x2 && mouseCoords.Y == 24 && LEFT_CLICK) // game over if pressed EXIT in console
 			{
 				return 1;
@@ -363,17 +454,42 @@ void DrawMenu(LAYER* layer, unsigned short console_window_width, unsigned short 
 	string welcome = "W E L C O M E  T O  S E A   B A T T L E ! ! !";
 	string newGame = "NEW GAME";
 	string exit = "EXIT";
-
+	string network = "NET WORK";
 	short welcomeLine = 2;
 	short newGameLine = 10;
+	short networkLine = 11;
 	short exitLine = 12;
 
 	drawLine((console_window_width - welcome.size()) / 2, welcomeLine, COLOR::GREEN, welcome);
 	drawLine((console_window_width - newGame.size()) / 2, newGameLine, COLOR::GREEN, newGame);
+	drawLine((console_window_width - network.size()) / 2, networkLine, COLOR::BLUE, network);
 	drawLine((console_window_width - exit.size()) / 2, exitLine, COLOR::RED, exit);
 	HandleMouseEvent((console_window_width - exit.size()) / 2, (console_window_width - exit.size()) / 2 + exit.size(), layer);
+	HandleMouseEvent((console_window_width - network.size()) / 2, (console_window_width - network.size()) / 2 + network.size(), layer);
 	HandleMouseEvent((console_window_width - newGame.size()) / 2, (console_window_width - newGame.size()) / 2 + newGame.size(), layer);
 
+}
+
+char** ReceiveData(char** arr, int SIZE, SOCKET socket, bool isServer)
+{
+	char* data;
+	if (isServer)
+	{
+		data = ReceiveFromClient(socket);
+	}
+	else
+	{
+		data = ReceiveFromServer(socket);
+	}
+	int i = 0;
+	for (int y = 0; y < SIZE; y++)
+	{
+		for (int x = 0; x < SIZE; x++)
+		{
+			arr[y][x] = data[i++];
+		}
+	}
+	return arr;
 }
 
 int generateShip(int SIZE, char** arr, int shipSize, int shipCount, int count)
@@ -577,14 +693,6 @@ void DrawTable(int startX, int startY, char** arr, bool player)
 {
 	const int SIZE = 12;
 
-	//int vertical = -1;
-	//int damageShip = 0;
-	//int directionFwd;
-	//int directionAft;
-	//int temp[4][2]{};
-	//int index = 0;
-
-
 	for (int y = 0; y < SIZE; y++)
 	{
 		GoToXY(startX, startY + y);
@@ -618,108 +726,6 @@ void DrawTable(int startX, int startY, char** arr, bool player)
 		}
 		cout << '\n';
 	}
-
-
-	/*if (player)
-	{
-		color = COLOR::GREEN;
-		ChangeColor(color);
-
-		for (int y = 0; y < SIZE; y++)
-		{
-			GoToXY(startX, startY + y);
-
-			for (int x = 0; x < SIZE; x++)
-			{
-				if (y == 0 && x != SIZE - 1 || y == SIZE - 1 && x != SIZE - 1)
-				{
-					cout << arr[y][x] << '-';
-
-				}
-				else if (arr[y][x] == '.')
-				{
-					cout << '~' << ' ';
-				}
-				else if (arr[y][x] == '*')
-				{
-					cout << '*' << ' ';
-				}
-				else
-				{
-					cout << arr[y][x] << ' ';
-				}
-
-			}
-			cout << '\n';
-		}
-	}
-	else
-	{
-		color = COLOR::RED;
-		ChangeColor(color);
-
-		for (int y = 0; y < SIZE; y++)
-		{
-			GoToXY(startX, startY + y);
-
-			for (int x = 0; x < SIZE; x++)
-			{
-
-				// define if damaged ship is verticale
-				/*if (arr[y][x] == 'X')
-				{
-					//if (arr[y - 1][x] == 'X' || arr[y + 1][x] == 'X' || arr[y][x - 1] == 'X' || arr[y][x + 1] == 'X')
-					//{
-					//	arr[y][x] = '@';
-					//	damageShip++;
-					//}
-					if (arr[y - 1][x] == 'S' || arr[y + 1][x] == 'S')
-					{
-						vertical = 1;
-					}
-					else if (arr[y][x - 1] == 'S' || arr[y][x + 1] == 'S')
-					{
-						vertical = 0;
-					}
-
-					if (vertical == 1)
-					{
-						int directionFwd = y;
-						int directionAft = y;
-
-						while (arr[directionFwd][x] == 'X' && arr[directionAft][x] == 'X')
-						{
-							temp[index][0] = x;
-							temp[index][1] = y;
-							directionFwd += 1;
-							directionAft -= 1;
-
-
-						}
-					}
-
-
-				}*/
-
-
-				/*if (y == 0 && x != SIZE - 1 || y == SIZE - 1 && x != SIZE - 1)
-				{
-					cout << arr[y][x] << "-";
-
-				}
-				else if (arr[y][x] == '.' || arr[y][x] == 'S')
-				{
-					cout << '~' << ' ';
-				}
-				else
-				{
-					cout << arr[y][x] << " ";
-				}
-
-			}
-			cout << '\n';
-		}
-	}*/
 
 	for (int i = int('A'), j = startX + 2; i < int('K'); i++, j += 2)
 	{
