@@ -8,7 +8,6 @@
 using namespace std;
 #pragma comment(lib, "winmm.lib")
 
-HANDLE h_out = GetStdHandle(STD_OUTPUT_HANDLE);  // Global handle for console output
 
 bool isRunning = true;  // Global variable to control the game loop
 
@@ -54,16 +53,16 @@ void GoToXY(int x, int y);
 void DrawLine(int x, int y, int color, string message);
 
 // Sets the size of the console window in terms of columns and rows.
-void SetConsoleWindowColumnsAndRows(unsigned int columns, unsigned int rows);
+void SetConsoleWindowColumnsAndRows(unsigned int columns, unsigned int rows, HANDLE h_out);
 
 // Sets the size of the console font.
-void SetConsoleFont(int font_width, int font_height);
+void SetConsoleFont(int font_width, int font_height, HANDLE h_out);
 
 // Centers the console window on the screen given font dimensions.
 void CenterScreen(int font_width, int font_height, unsigned short console_window_width, unsigned short console_window_height);
 
 // Apply console settings, such as colors, font size, and window size.
-void SetConsole(unsigned short console_window_width, unsigned short console_window_height);
+void SetConsole(unsigned short console_window_width, unsigned short console_window_height, HANDLE h_out);
 
 // Handles mouse events for interaction with the game.
 int HandleMouseEvent(int x1 = -1, int x2 = -1, LAYER* layer = nullptr, int y1 = 0, int y2 = 0, char** arr = nullptr);
@@ -101,10 +100,11 @@ void SoundEffect(SOUND sound);
 
 
 int main() {
+	HANDLE h_out = GetStdHandle(STD_OUTPUT_HANDLE);  // handle for console output
 	const unsigned short console_window_width = 100;
 	const unsigned short console_window_height = 30;
 	srand(time(NULL));
-	SetConsole(console_window_width, console_window_height);
+	SetConsole(console_window_width, console_window_height, h_out);
 
 	const int tableSize = 12;
 	char** playerTable = nullptr;
@@ -226,6 +226,8 @@ int main() {
 /// <param name="color">The desired color to set the text to.</param>
 void ChangeColor(COLOR color)
 {
+	HANDLE h_out = GetStdHandle(STD_OUTPUT_HANDLE);  // handle for console output
+
 	// SetConsoleTextAttribute is a Windows API function that changes the text color.
 	SetConsoleTextAttribute(h_out, color);
 }
@@ -237,6 +239,8 @@ void ChangeColor(COLOR color)
 /// <param name="y">The Y-coordinate of the new cursor position.</param>
 void GoToXY(int x, int y)
 {
+	HANDLE h_out = GetStdHandle(STD_OUTPUT_HANDLE);  // handle for console output
+
 	// COORD is a structure in the Windows API representing a pair of coordinates.
 	COORD cursor;
 
@@ -258,6 +262,8 @@ void GoToXY(int x, int y)
 /// <param name="message">The text message to be drawn.</param>
 void DrawLine(int x, int y, int color, string message)
 {
+	HANDLE h_out = GetStdHandle(STD_OUTPUT_HANDLE);  // handle for console output
+
 	// COORD is a structure in the Windows API representing a pair of coordinates.
 	COORD cursor;
 
@@ -281,7 +287,7 @@ void DrawLine(int x, int y, int color, string message)
 /// </summary>
 /// <param name="columns">The number of columns in the console window.</param>
 /// <param name="rows">The number of rows in the console window.</param>
-void SetConsoleWindowColumnsAndRows(unsigned int columns, unsigned int rows)
+void SetConsoleWindowColumnsAndRows(unsigned int columns, unsigned int rows, HANDLE h_out)
 {
 	// Convert the column and row values to strings.
 	string width = to_string(columns);
@@ -310,7 +316,7 @@ void SetConsoleWindowColumnsAndRows(unsigned int columns, unsigned int rows)
 /// </summary>
 /// <param name="font_width">The width of the console font.</param>
 /// <param name="font_height">The height of the console font.</param>
-void SetConsoleFont(int font_width, int font_height)
+void SetConsoleFont(int font_width, int font_height, HANDLE h_out)
 {
 	// CONSOLE_FONT_INFOEX is a structure in the Windows API representing console font information.
 	CONSOLE_FONT_INFOEX cfi;
@@ -361,7 +367,7 @@ void CenterScreen(int font_width, int font_height, unsigned short console_window
 /// </summary>
 /// <param name="console_window_width">The width of the console window in characters.</param>
 /// <param name="console_window_height">The height of the console window in characters.</param>
-void SetConsole(unsigned short console_window_width, unsigned short console_window_height)
+void SetConsole(unsigned short console_window_width, unsigned short console_window_height, HANDLE h_out)
 {
 	CONSOLE_CURSOR_INFO info;
 
@@ -377,11 +383,11 @@ void SetConsole(unsigned short console_window_width, unsigned short console_wind
 	info.dwSize = 100;
 	SetConsoleCursorInfo(h_out, &info);
 
-	SetConsoleFont(font_width, font_height);
+	SetConsoleFont(font_width, font_height, h_out);
 
 	CenterScreen(font_width, font_height, console_window_width, console_window_height);
 
-	SetConsoleWindowColumnsAndRows(console_window_width, console_window_height);
+	SetConsoleWindowColumnsAndRows(console_window_width, console_window_height, h_out);
 }
 
 
